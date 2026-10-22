@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datafort Navigator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            cyan: '#00f0ff',
+                            magenta: '#ff003c',
+                            yellow: '#fcee0a',
+                            dark: '#050505',
+                            panel: '#121212',
+                            border: '#333333'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Rajdhani', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #050505; color: #e5e7eb; overflow-x: hidden; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #121212; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+        ::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
+
+        /* Cyberpunk Glitch & Glow Effects */
+        .glow-cyan { text-shadow: 0 0 5px rgba(0,240,255,0.7); }
+        .glow-magenta { text-shadow: 0 0 5px rgba(255,0,60,0.7); }
+        .border-glow-cyan { box-shadow: 0 0 10px rgba(0,240,255,0.2); border-color: #00f0ff; }
+        .border-glow-magenta { box-shadow: 0 0 15px rgba(255,0,60,0.4); border-color: #ff003c; }
+        
+        .scanline {
+            position: fixed; left: 0; top: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px; pointer-events: none; z-index: 50; opacity: 0.3;
+        }
+
+        /* Glitch animation for headers */
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 1px) }
+            40% { transform: translate(-1px, -1px) }
+            60% { transform: translate(2px, 1px) }
+            80% { transform: translate(1px, -1px) }
+            100% { transform: translate(0) }
+        }
+        .glitch-hover:hover { animation: glitch 0.2s linear infinite; }
+    </style>
+</head>
+<body>
+    <div class="scanline"></div>
+    <div id="root" class="min-h-screen relative z-10 flex flex-col"></div>
+
+    <script type="text/babel">
+        const RAW_DATA = [
+            { corp: "Adrek Robotics", desc: "Drone, robotics, and cyberware", tags: "#manufacturing #robotics #cyberware #drones", cyberware: "Adrek Robotics Burroughs (FBC)", notes: "Bitter rivals with Arasaka. Company folded after 4CW when most of their talent were wiped by the Soulkiller.", npcs: "", locations: "Chicago IL" },
+            { corp: "Aerocab", desc: "Taxi service", tags: "#service #transportation", cyberware: "", notes: "Will not service the Hot Zone, the OCZ, or Rancho Coronado.", npcs: "", locations: "Night City-New Westbrook" },
+            { corp: "Aesculapius Incorporated", desc: "Medical Equipment", tags: "#manufacturing #medicalequipment #consumermedical #healthcare", cyberware: "", notes: "Cybercast, Rapidetox, Blood Substitute, Limb Preservation/transport Unit, Archaesthetic", npcs: "", locations: "Athens, Greece" },
+            { corp: "Americar", desc: "Automobiles", tags: "#manufacturing #automotive #vehicles", cyberware: "", notes: "(formerly) New American Motors / known for economy vehicles.", npcs: "", locations: "USA Midwest" },
+            { corp: "Arasaka", desc: "Security, Banking, Manufacturing, Distribution, Weapons", tags: "#megacorp #manufacturing #personalsecurity #corporatesecurity #banking #finance #weapons #cybernetics #cyberware #consumergoods #legal #consulting #ACPA", cyberware: "Neo Standard ACPA, Neo Guardian ACPA, Shin DaiOni ACPA, Type-17k Guardian ACPA, Standard B ACPA, Standard C ACPA, DaiOni FBC, Cybereye, Cyberaudio Suite, Cyberarm, Cyberleg", notes: "\"Saka\" or アラサカ社 or 荒坂社. The largest, most influential megacorp in the world. Largest distributer of Japanese-made products worldwide.", npcs: "Saburo Arasaka, Kei Arasaka", locations: "Global, Night City, HQ in Tokyo, Japan" },
+            { corp: "Asukaga & Finch", desc: "Investment and financial counseling", tags: "#banking #finance #consulting", cyberware: "", notes: "A&F / Developed and sponsors the Body Lotto", npcs: "", locations: "New York City" },
+            { corp: "Beretta", desc: "Premium firearms", tags: "#manufacturing #weapons", cyberware: "", notes: "Fabbrica d'Armi Pietro Beretta, Beretta Euroarms, Royal Enfield Ordnance, Heckler & Koch and Rhinemetall.", npcs: "", locations: "Gardone Val Trompia, Italy" },
+            { corp: "Biotechnica", desc: "CHOOH2, biotech, genetic engineering, pharma, microbiology", tags: "#megacorp #biotechnology #geneticengineering #biofuel #commercialagriculture #syntheticfood #pharmacology #healthcare", cyberware: "", notes: "", npcs: "", locations: "Night City-University District" },
+            { corp: "Bodyweight Life Preservation Systems", desc: "Medical equipment, medicine, supplements, bioware, cyberware", tags: "#manufacturing #medicalequipment #healthcare #pharmacology #supplements #bioware #cyberware", cyberware: "Decentralized Heart, Variable-Chambered Heart Option, Vein Clips, Enhanced Lung Series, Pacesetter Sport Heart, Pacesetter 2000", notes: "\"Bodyweight\" / Very common. Multiple products in all price points and stores.", npcs: "", locations: "Night City" },
+            { corp: "Braindance Inc", desc: "Braindance players and storage", tags: "#technology #computerhardware #braindancehardware", cyberware: "", notes: "Collaborates with Militech.", npcs: "", locations: "Night City" },
+            { corp: "Brennan Cycles", desc: "Motorcycles", tags: "#manufacturing #motorcycles", cyberware: "", notes: "Names their motorcycles after Greek gods.", npcs: "", locations: "Night City" },
+            { corp: "Buck-A-Slice", desc: "Restaurant, food trucks", tags: "#service #retailfood #fastfood", cyberware: "", notes: "Once popular, now compared to styrofoam for taste.", npcs: "", locations: "Night City" },
+            { corp: "Budget Arms", desc: "Firearms", tags: "#manufacturing #weapons", cyberware: "", notes: "Budshitarms / Known for cheap, low-quality weapons.", npcs: "", locations: "Night City" },
+            { corp: "Cactus Water", desc: "Bottled water", tags: "#manufacturing #consumerwater", cyberware: "", notes: "Rumor that their \"spring water\" is just filtered tap water.", npcs: "", locations: "Night City" },
+            { corp: "Capsule Co", desc: "Cyberware", tags: "#manufacturing #cybernetics", cyberware: "Cyberpillow", notes: "Sometimes partners with KraftMatrix", npcs: "", locations: "" }
+        ];
+
+        const App = () => {
+            const [gmMode, setGmMode] = React.useState(false);
+            const [activeTab, setActiveTab] = React.useState('search');
+            const [searchQuery, setSearchQuery] = React.useState('');
+            const [locationQuery, setLocationQuery] = React.useState('All');
+
+            // Derived Data Parsing
+            const allLocations = ["All", ...new Set(RAW_DATA.map(c => c.locations.split(',')).flat().map(s => s.trim()).filter(s => s))].sort();
+            
+            const filteredCorps = RAW_DATA.filter(c => {
+                const searchLower = searchQuery.toLowerCase();
+                const matchesSearch = c.corp.toLowerCase().includes(searchLower) || 
+                                      c.desc.toLowerCase().includes(searchLower) || 
+                                      c.tags.toLowerCase().includes(searchLower);
+                return matchesSearch;
+            });
+
+            const cyberwareList = [];
+            RAW_DATA.forEach(c => {
+                if(c.cyberware) {
+                    const items = c.cyberware.split(',').map(i => i.trim());
+                    items.forEach(i => cyberwareList.push({ item: i, corp: c.corp }));
+                }
+            });
+
+            const locationCorps = RAW_DATA.filter(c => locationQuery === 'All' || c.locations.includes(locationQuery));
+            
+            const npcList = [];
+            RAW_DATA.forEach(c => {
+                if(c.npcs) {
+                    const chars = c.npcs.split(',').map(n => n.trim());
+                    chars.forEach(char => npcList.push({ name: char, corp: c.corp }));
+                }
+            });
+
+            return (
+                <div className={`flex-1 flex flex-col transition-colors duration-300 ${gmMode ? 'border-t-4 border-cyber-magenta' : 'border-t-4 border-cyber-cyan'}`}>
+                    
+                    {/* Header Bar */}
+                    <header className="bg-cyber-panel border-b border-cyber-border p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <i className={`fas fa-server text-3xl ${gmMode ? 'text-cyber-magenta glow-magenta' : 'text-cyber-cyan glow-cyan'}`}></i>
+                            <div>
+                                <h1 className="font-display text-2xl md:text-3xl font-bold uppercase tracking-wider glitch-hover">
+                                    DATAFORT NAVIGATOR
+                                </h1>
+                                <p className="text-xs text-gray-400 font-mono">TWM Campaign Edition v1.7</p>
+                            </div>
+                        </div>
+
+                        {/* GM Toggle Switch */}
+                        <div className="flex items-center gap-3 bg-black p-2 rounded-lg border border-gray-800">
+                            <span className={`text-sm font-display font-bold uppercase ${!gmMode ? 'text-cyber-cyan' : 'text-gray-600'}`}>Player View</span>
+                            <button 
+                                onClick={() => setGmMode(!gmMode)}
+                                className={`w-14 h-7 rounded-full relative transition-colors duration-300 flex items-center ${gmMode ? 'bg-cyber-magenta' : 'bg-gray-700'}`}
+                            >
+                                <div className={`w-5 h-5 bg-white rounded-full absolute shadow-md transition-transform duration-300 ${gmMode ? 'transform translate-x-8' : 'transform translate-x-1'}`}>
+                                    {gmMode && <i className="fas fa-eye text-cyber-magenta text-xs absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></i>}
+                                </div>
+                            </button>
+                            <span className={`text-sm font-display font-bold uppercase ${gmMode ? 'text-cyber-magenta glow-magenta' : 'text-gray-600'}`}>GM View</span>
+                        </div>
+                    </header>
+
+                    {}
+                    <nav className="flex overflow-x-auto bg-black border-b border-cyber-border no-scrollbar">
+                        {['search', 'cyberware', 'locations', 'npcs'].map(tab => (
+                            <button 
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`px-6 py-3 font-display font-bold uppercase tracking-widest text-sm transition-all whitespace-nowrap
+                                    ${activeTab === tab 
+                                        ? (gmMode ? 'text-cyber-magenta border-b-2 border-cyber-magenta bg-opacity-20 bg-cyber-magenta' : 'text-cyber-cyan border-b-2 border-cyber-cyan bg-opacity-20 bg-cyber-cyan') 
+                                        : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900'
+                                    }`}
+                            >
+                                {tab === 'search' && <i className="fas fa-search mr-2"></i>}
+                                {tab === 'cyberware' && <i className="fas fa-microchip mr-2"></i>}
+                                {tab === 'locations' && <i className="fas fa-map-marker-alt mr-2"></i>}
+                                {tab === 'npcs' && <i className="fas fa-user-secret mr-2"></i>}
+                                {tab}
+                            </button>
+                        ))}
+                    </nav>
+
+                    {}
+                    <main className="flex-1 p-4 md:p-6 overflow-y-auto">
+                        
+                        {/* VIEW: AGENT SEARCH */}
+                        {activeTab === 'search' && (
+                            <div className="max-w-6xl mx-auto space-y-6">
+                                <div className="relative">
+                                    <i className="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Query Corporate Database (Name, Tag, Keyword)..." 
+                                        className={`w-full bg-cyber-panel text-white p-4 pl-12 rounded-lg outline-none focus:ring-2 transition-all font-mono text-sm md:text-base ${gmMode ? 'focus:ring-cyber-magenta focus:border-cyber-magenta border border-gray-800' : 'focus:ring-cyber-cyan focus:border-cyber-cyan border border-gray-800'}`}
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {filteredCorps.length === 0 ? (
+                                        <div className="col-span-full text-center py-10 text-gray-500 font-mono">No database records found.</div>
+                                    ) : (
+                                        filteredCorps.map((corp, idx) => (
+                                            <div key={idx} className={`bg-cyber-panel rounded-lg p-5 border border-gray-800 flex flex-col transition-all hover:-translate-y-1 ${gmMode ? 'hover:border-glow-magenta' : 'hover:border-glow-cyan'}`}>
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <h2 className={`font-display text-2xl font-bold uppercase ${gmMode ? 'text-white' : 'text-cyber-cyan'}`}>{corp.corp}</h2>
+                                                    {corp.tags.includes('#megacorp') && <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">MEGACORP</span>}
+                                                </div>
+                                                <p className="text-sm text-gray-300 mb-4 flex-1">{corp.desc}</p>
+                                                
+                                                <div className="flex flex-wrap gap-1 mb-4">
+                                                    {corp.tags.split(' ').map((tag, i) => (
+                                                        <span key={i} className="text-[10px] font-mono text-gray-400 bg-gray-900 px-2 py-1 rounded">{tag}</span>
+                                                    ))}
+                                                </div>
+
+                                                {/* GM ONLY DATA */}
+                                                {gmMode && (corp.notes || corp.npcs) && (
+                                                    <div className="mt-4 pt-4 border-t border-dashed border-cyber-magenta border-opacity-50">
+                                                        <h3 className="text-cyber-magenta font-display text-sm uppercase mb-2 flex items-center"><i className="fas fa-lock mr-2"></i> Classified GM Intel</h3>
+                                                        {corp.notes && <p className="text-xs font-mono text-red-200 mb-2 p-2 bg-red-950 bg-opacity-30 rounded border border-red-900">{corp.notes}</p>}
+                                                        {corp.npcs && <p className="text-xs font-mono text-gray-400"><span className="text-cyber-magenta">Known VIPs:</span> {corp.npcs}</p>}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {}
+                        {activeTab === 'cyberware' && (
+                            <div className="max-w-4xl mx-auto space-y-4">
+                                <h2 className="font-display text-2xl mb-6 text-gray-300 border-b border-gray-800 pb-2">
+                                    <i className="fas fa-microchip mr-2"></i> Cataloged Cyberware & Hardware
+                                </h2>
+                                <div className="bg-cyber-panel rounded-lg border border-gray-800 overflow-hidden">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-black text-gray-400 font-display uppercase text-sm border-b border-gray-800">
+                                                <th className="p-4 w-2/3">Hardware / Upgrade Name</th>
+                                                <th className="p-4 w-1/3">Manufacturer</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="font-mono text-sm">
+                                            {cyberwareList.map((item, idx) => (
+                                                <tr key={idx} className="border-b border-gray-800 hover:bg-gray-900 transition-colors">
+                                                    <td className="p-4 text-white">{item.item}</td>
+                                                    <td className={`p-4 font-bold ${gmMode ? 'text-cyber-magenta' : 'text-cyber-cyan'}`}>{item.corp}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {}
+                        {activeTab === 'locations' && (
+                            <div className="max-w-5xl mx-auto space-y-6">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                    <h2 className="font-display text-2xl text-gray-300">
+                                        <i className="fas fa-globe mr-2"></i> Corporate Territory Map
+                                    </h2>
+                                    <select 
+                                        className="bg-black border border-gray-700 text-white p-3 rounded outline-none font-mono text-sm focus:border-cyber-cyan w-full md:w-auto"
+                                        value={locationQuery}
+                                        onChange={(e) => setLocationQuery(e.target.value)}
+                                    >
+                                        {allLocations.map((loc, i) => (
+                                            <option key={i} value={loc}>{loc === 'All' ? 'GLOBAL OVERVIEW (ALL)' : loc.toUpperCase()}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {locationCorps.map((corp, idx) => (
+                                        <div key={idx} className="bg-cyber-panel p-4 rounded flex justify-between items-center border border-gray-800">
+                                            <div>
+                                                <h3 className={`font-display font-bold text-xl ${gmMode ? 'text-cyber-magenta' : 'text-cyber-cyan'}`}>{corp.corp}</h3>
+                                                <p className="text-xs text-gray-400 font-mono mt-1">{corp.desc}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300 font-mono">
+                                                    <i className="fas fa-map-pin mr-1"></i> {corp.locations || "Unknown"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {}
+                        {activeTab === 'npcs' && (
+                            <div className="max-w-4xl mx-auto space-y-4">
+                                {gmMode ? (
+                                    <>
+                                        <h2 className="font-display text-2xl mb-6 text-cyber-magenta border-b border-cyber-magenta border-opacity-30 pb-2">
+                                            <i className="fas fa-user-secret mr-2"></i> Known High-Profile Targets (VIPs)
+                                        </h2>
+                                        <div className="grid gap-4">
+                                            {npcList.map((npc, idx) => (
+                                                <div key={idx} className="bg-black border-l-4 border-cyber-magenta p-4 flex items-center justify-between">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center border border-gray-700">
+                                                            <i className="fas fa-user text-gray-500"></i>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-white font-bold font-display text-lg">{npc.name}</h4>
+                                                            <p className="text-xs text-gray-500 font-mono">Affiliation: <span className="text-gray-300">{npc.corp}</span></p>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setSearchQuery(npc.corp);
+                                                            setActiveTab('search');
+                                                        }}
+                                                        className="text-xs font-mono text-cyber-magenta hover:text-white border border-cyber-magenta px-3 py-1 rounded transition-colors"
+                                                    >
+                                                        VIEW CORP
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-20">
+                                        <i className="fas fa-lock text-6xl text-gray-700 mb-4"></i>
+                                        <h2 className="font-display text-2xl text-gray-500">ACCESS DENIED</h2>
+                                        <p className="font-mono text-sm text-gray-600 mt-2">Personnel files require Game Master override authorization.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
