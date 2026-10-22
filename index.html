@@ -8,6 +8,8 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Add PapaParse to read the CSV file -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
@@ -90,15 +92,40 @@
         ];
 
         const App = () => {
+            const [corpData, setCorpData] = React.useState(RAW_DATA);
             const [gmMode, setGmMode] = React.useState(false);
             const [activeTab, setActiveTab] = React.useState('search');
             const [searchQuery, setSearchQuery] = React.useState('');
             const [locationQuery, setLocationQuery] = React.useState('All');
+            const fileInputRef = React.useRef(null);
 
-            // Derived Data Parsing
-            const allLocations = ["All", ...new Set(RAW_DATA.map(c => c.locations.split(',')).flat().map(s => s.trim()).filter(s => s))].sort();
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        const parsed = results.data.map(row => ({
+                            corp: row['Corporation'] || '',
+                            desc: row['Description'] || '',
+                            tags: row['Tags'] || '',
+                            cyberware: row['Cyberware'] || '',
+                            notes: row['Nickname/Notes'] || '',
+                            npcs: row['Known NPCs'] || '',
+                            locations: row['Known Locations'] || ''
+                        })).filter(c => c.corp); // Ensure we don't add blank rows
+                        setCorpData(parsed);
+                        alert(`Datashard Loaded: ${parsed.length} corporate profiles securely imported.`);
+                    }
+                });
+            };
+
+            // Derived Data Parsing (using corpData instead of RAW_DATA)
+            const allLocations = ["All", ...new Set(corpData.map(c => c.locations.split(',')).flat().map(s => s.trim()).filter(s => s))].sort();
             
-            const filteredCorps = RAW_DATA.filter(c => {
+            const filteredCorps = corpData.filter(c => {
                 const searchLower = searchQuery.toLowerCase();
                 const matchesSearch = c.corp.toLowerCase().includes(searchLower) || 
                                       c.desc.toLowerCase().includes(searchLower) || 
@@ -107,17 +134,17 @@
             });
 
             const cyberwareList = [];
-            RAW_DATA.forEach(c => {
+            corpData.forEach(c => {
                 if(c.cyberware) {
                     const items = c.cyberware.split(',').map(i => i.trim());
                     items.forEach(i => cyberwareList.push({ item: i, corp: c.corp }));
                 }
             });
 
-            const locationCorps = RAW_DATA.filter(c => locationQuery === 'All' || c.locations.includes(locationQuery));
+            const locationCorps = corpData.filter(c => locationQuery === 'All' || c.locations.includes(locationQuery));
             
             const npcList = [];
-            RAW_DATA.forEach(c => {
+            corpData.forEach(c => {
                 if(c.npcs) {
                     const chars = c.npcs.split(',').map(n => n.trim());
                     chars.forEach(char => npcList.push({ name: char, corp: c.corp }));
@@ -135,53 +162,28 @@
                                 <h1 className="font-display text-2xl md:text-3xl font-bold uppercase tracking-wider glitch-hover">
                                     DATAFORT NAVIGATOR
                                 </h1>
-                                <p className="text-xs text-gray-400 font-mono">TWM Campaign Edition v1.7</p>
+                                <p className="text-xs text-gray-400 font-mono">Records: {corpData.length} active nodes</p>
                             </div>
                         </div>
 
-                        {/* GM Toggle Switch */}
-                        <div className="flex items-center gap-3 bg-black p-2 rounded-lg border border-gray-800">
-                            <span className={`text-sm font-display font-bold uppercase ${!gmMode ? 'text-cyber-cyan' : 'text-gray-600'}`}>Player View</span>
+                        <div className="flex flex-col md:flex-row items-center gap-4">
+                            {/* File Upload Button */}
+                            <input 
+                                type="file" 
+                                accept=".csv" 
+                                className="hidden" 
+                                ref={fileInputRef}
+                                onChange={handleFileUpload}
+                            />
                             <button 
-                                onClick={() => setGmMode(!gmMode)}
-                                className={`w-14 h-7 rounded-full relative transition-colors duration-300 flex items-center ${gmMode ? 'bg-cyber-magenta' : 'bg-gray-700'}`}
+                                onClick={() => fileInputRef.current.click()}
+                                className="bg-gray-800 hover:bg-gray-700 text-xs text-white font-mono py-2 px-4 rounded border border-gray-600 transition-colors flex items-center"
                             >
-                                <div className={`w-5 h-5 bg-white rounded-full absolute shadow-md transition-transform duration-300 ${gmMode ? 'transform translate-x-8' : 'transform translate-x-1'}`}>
-                                    {gmMode && <i className="fas fa-eye text-cyber-magenta text-xs absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></i>}
-                                </div>
+                                <i className="fas fa-upload mr-2"></i> LOAD DATASHARD (.CSV)
                             </button>
-                            <span className={`text-sm font-display font-bold uppercase ${gmMode ? 'text-cyber-magenta glow-magenta' : 'text-gray-600'}`}>GM View</span>
-                        </div>
-                    </header>
 
-                    {}
-                    <nav className="flex overflow-x-auto bg-black border-b border-cyber-border no-scrollbar">
-                        {['search', 'cyberware', 'locations', 'npcs'].map(tab => (
-                            <button 
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-3 font-display font-bold uppercase tracking-widest text-sm transition-all whitespace-nowrap
-                                    ${activeTab === tab 
-                                        ? (gmMode ? 'text-cyber-magenta border-b-2 border-cyber-magenta bg-opacity-20 bg-cyber-magenta' : 'text-cyber-cyan border-b-2 border-cyber-cyan bg-opacity-20 bg-cyber-cyan') 
-                                        : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900'
-                                    }`}
-                            >
-                                {tab === 'search' && <i className="fas fa-search mr-2"></i>}
-                                {tab === 'cyberware' && <i className="fas fa-microchip mr-2"></i>}
-                                {tab === 'locations' && <i className="fas fa-map-marker-alt mr-2"></i>}
-                                {tab === 'npcs' && <i className="fas fa-user-secret mr-2"></i>}
-                                {tab}
-                            </button>
-                        ))}
-                    </nav>
-
-                    {}
-                    <main className="flex-1 p-4 md:p-6 overflow-y-auto">
-                        
-                        {/* VIEW: AGENT SEARCH */}
-                        {activeTab === 'search' && (
-                            <div className="max-w-6xl mx-auto space-y-6">
-                                <div className="relative">
+                            {/* GM Toggle Switch */}
+                            <div className="flex items-center gap-3 bg-black p-2 rounded-lg border border-gray-800">
                                     <i className="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
                                     <input 
                                         type="text" 
