@@ -97,6 +97,7 @@
             const [activeTab, setActiveTab] = React.useState('search');
             const [searchQuery, setSearchQuery] = React.useState('');
             const [locationQuery, setLocationQuery] = React.useState('All');
+            const [selectedImage, setSelectedImage] = React.useState(null);
             const fileInputRef = React.useRef(null);
 
             const handleFileUpload = (event) => {
@@ -111,6 +112,7 @@
                             corp: row['Corporation'] || '',
                             desc: row['Description'] || '',
                             tags: row['Tags'] || '',
+                            logo: row['Logo'] || '',
                             cyberware: row['Cyberware'] || '',
                             notes: row['Nickname/Notes'] || '',
                             npcs: row['Known NPCs'] || '',
@@ -201,8 +203,19 @@
                                         filteredCorps.map((corp, idx) => (
                                             <div key={idx} className={`bg-cyber-panel rounded-lg p-5 border border-gray-800 flex flex-col transition-all hover:-translate-y-1 ${gmMode ? 'hover:border-glow-magenta' : 'hover:border-glow-cyan'}`}>
                                                 <div className="flex justify-between items-start mb-3">
-                                                    <h2 className={`font-display text-2xl font-bold uppercase ${gmMode ? 'text-white' : 'text-cyber-cyan'}`}>{corp.corp}</h2>
-                                                    {corp.tags.includes('#megacorp') && <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">MEGACORP</span>}
+                                                    <div className="flex items-center gap-3">
+                                                        {corp.logo && (
+                                                            <img 
+                                                                src={corp.logo} 
+                                                                alt={`${corp.corp} logo`} 
+                                                                className="w-12 h-12 object-contain bg-black rounded border border-gray-700 cursor-pointer hover:opacity-80 transition-opacity"
+                                                                onClick={() => setSelectedImage(corp.logo)}
+                                                                title="Click to enlarge"
+                                                            />
+                                                        )}
+                                                        <h2 className={`font-display text-2xl font-bold uppercase ${gmMode ? 'text-white' : 'text-cyber-cyan'}`}>{corp.corp}</h2>
+                                                    </div>
+                                                    {corp.tags.includes('#megacorp') && <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded mt-1">MEGACORP</span>}
                                                 </div>
                                                 <p className="text-sm text-gray-300 mb-4 flex-1">{corp.desc}</p>
                                                 
@@ -330,6 +343,28 @@
                                         <p className="font-mono text-sm text-gray-600 mt-2">Personnel files require Game Master override authorization.</p>
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {}
+                        {selectedImage && (
+                            <div 
+                                className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4 cursor-pointer transition-opacity"
+                                onClick={() => setSelectedImage(null)}
+                            >
+                                <div className="relative max-w-4xl max-h-full">
+                                    <button 
+                                        className="absolute -top-10 right-0 text-gray-400 hover:text-white text-xl font-mono transition-colors"
+                                        onClick={() => setSelectedImage(null)}
+                                    >
+                                        <i className="fas fa-times mr-2"></i>CLOSE
+                                    </button>
+                                    <img 
+                                        src={selectedImage} 
+                                        alt="Full size corporate logo" 
+                                        className="max-w-full max-h-[80vh] object-contain border border-gray-700 rounded-lg shadow-2xl bg-black"
+                                    />
+                                </div>
                             </div>
                         )}
                     </main>
